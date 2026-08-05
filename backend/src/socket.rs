@@ -13,6 +13,12 @@ struct EndSession {
 
 pub fn configure(io: &socketioxide::SocketIo) {
     io.ns("/", |socket: SocketRef| async move {
+        socket.on("watch-session", |socket: SocketRef, Data(data): Data<JoinRoom>| async move {
+            let room = data.pin.clone();
+            let _ = socket.leave_all();
+            let _ = socket.join(room.clone());
+        });
+
         socket.on("join-session", |socket: SocketRef, Data(data): Data<JoinRoom>| async move {
             let room = data.pin.clone();
             let _ = socket.leave_all();

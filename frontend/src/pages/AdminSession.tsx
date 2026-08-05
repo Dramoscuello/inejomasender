@@ -53,11 +53,11 @@ export default function AdminSession() {
       socketRef.current = socket;
 
       socket.on('connect', () => {
-        socket.emit('join-session', { pin });
+        socket.emit('watch-session', { pin });
       });
 
       socket.on('student-count', (count: number) => {
-        setStudentCount(count);
+        setStudentCount(Math.max(0, count - 1));
       });
 
       socket.on('disconnect', () => {

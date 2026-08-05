@@ -16,6 +16,8 @@ export default function StudentWaitingRoom() {
   const navigate = useNavigate();
   const [files, setFiles] = useState<SharedFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [countdown, setCountdown] = useState(5);
   const socketRef = useRef<Socket | null>(null);
 
   const fetchFiles = async () => {
@@ -43,7 +45,7 @@ export default function StudentWaitingRoom() {
 
       socket.on('session-ended', () => {
         socket.disconnect();
-        navigate('/');
+        setSessionEnded(true);
       });
 
       return () => {
@@ -54,6 +56,16 @@ export default function StudentWaitingRoom() {
 
     return () => clearInterval(interval);
   }, [pin, navigate]);
+
+  useEffect(() => {
+    if (!sessionEnded) return;
+    if (countdown <= 0) {
+      navigate('/');
+      return;
+    }
+    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [sessionEnded, countdown, navigate]);
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -68,6 +80,28 @@ export default function StudentWaitingRoom() {
   const handleDownloadZip = () => {
     window.open(`/api/files/download-zip/${pin}`, '_blank');
   };
+
+  if (sessionEnded) {
+    return (
+      <div className="bg-[#f8f9fe] min-h-screen flex items-center justify-center font-sans">
+        <div className="bg-white rounded-3xl p-8 shadow-2xl border border-gray-100 text-center max-w-sm w-full mx-4">
+          <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mx-auto mb-4">
+            <span className="material-symbols-outlined text-3xl">stop_circle</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Sesión finalizada</h2>
+          <p className="text-sm text-gray-500 mb-6">El profesor ha cerrado la sesión. Serás redirigido en unos segundos.</p>
+          <div className="text-4xl font-extrabold text-brand-purple mb-4">{countdown}</div>
+          <button
+            onClick={() => navigate('/')}
+            style={{ backgroundColor: '#7b68ee', color: '#ffffff' }}
+            className="bg-[#7b68ee] text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-indigo-600 transition-colors"
+          >
+            Volver ahora
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#f8f9fe] min-h-screen flex flex-col font-sans text-brand-text">
@@ -85,8 +119,8 @@ export default function StudentWaitingRoom() {
 
       <main className="flex-1 max-w-4xl w-full mx-auto p-8 space-y-6">
         <div className="bg-white rounded-3xl p-8 shadow-soft text-center">
-          <div className="w-12 h-12 rounded-full bg-cyan-100 text-cyan-500 flex items-center justify-center mx-auto mb-3 animate-spin">
-            <span className="material-symbols-outlined text-2xl">sync</span>
+          <div className="w-12 h-12 rounded-full bg-cyan-100 text-cyan-500 flex items-center justify-center mx-auto mb-3">
+            <span className="material-symbols-outlined text-2xl animate-spin">sync</span>
           </div>
           <h2 className="text-xl font-bold text-gray-800 mb-1">Esperando nuevos archivos...</h2>
           <p className="text-sm text-gray-400">Los archivos que comparta el profesor aparecerán en esta lista automáticamente.</p>
