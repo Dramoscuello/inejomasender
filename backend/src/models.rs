@@ -1,12 +1,17 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use time::OffsetDateTime;
 use crate::config::Config;
+
+pub type RoomCounter = Arc<Mutex<HashMap<String, usize>>>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
     pub config: Config,
+    pub room_counter: RoomCounter,
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]

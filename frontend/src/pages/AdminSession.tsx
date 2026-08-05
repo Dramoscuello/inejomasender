@@ -46,32 +46,36 @@ export default function AdminSession() {
 
   useEffect(() => {
     fetchFiles();
-    const interval = setInterval(fetchFiles, 5000);
+    const fileInterval = setInterval(fetchFiles, 5000);
 
+    const fetchCount = async () => {
+      if (!sessionId) return;
+      try {
+        const data = await apiFetch<number>(`/sessions/${sessionId}/count`);
+        setStudentCount(data);
+      } catch {
+        // ignore errors
+      }
+    };
+    fetchCount();
+    const countInterval = setInterval(fetchCount, 3000);
+
+    let socket: ReturnType<typeof io> | null = null;
     if (pin && pin !== '----') {
-      const socket = io('/', { transports: ['websocket', 'polling'] });
+      socket = io('/', { transports: ['websocket', 'polling'] });
       socketRef.current = socket;
 
       socket.on('connect', () => {
-        socket.emit('watch-session', { pin });
+        socket?.emit('watch-session', { pin });
       });
-
-      socket.on('student-count', (count: number) => {
-        setStudentCount(Math.max(0, count - 1));
-      });
-
-      socket.on('disconnect', () => {
-        setStudentCount(0);
-      });
-
-      return () => {
-        clearInterval(interval);
-        socket.disconnect();
-      };
     }
 
-    return () => clearInterval(interval);
-  }, [pin, fetchFiles]);
+    return () => {
+      clearInterval(fileInterval);
+      clearInterval(countInterval);
+      socket?.disconnect();
+    };
+  }, [pin, fetchFiles, sessionId]);
 
   const handleEndSession = async () => {
     const ok = await confirm({

@@ -134,3 +134,24 @@ pub async fn verify_pin(
         None => Err((StatusCode::NOT_FOUND, "PIN no válido o sesión finalizada".to_string())),
     }
 }
+
+pub async fn get_connection_count(
+    _user: AuthenticatedUser,
+    State(state): State<AppState>,
+    Path(session_id): Path<i32>,
+) -> Result<Json<usize>, (StatusCode, String)> {
+    let session: Option<Session> = sqlx::query_as("SELECT * FROM sessions WHERE id = $1")
+        .bind(session_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let session = session.ok_or((StatusCode::NOT_FOUND, "Session not found".to_string()))?;
+
+    let count = state.room_counter.lock().unwrap()
+        .get(&session.pin)
+        .copied()
+        .unwrap_or(0);
+
+    Ok(Json(count))
+}

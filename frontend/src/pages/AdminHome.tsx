@@ -24,6 +24,18 @@ interface Session {
   started_at: string | null;
 }
 
+interface SessionInfo {
+  id: number;
+  grade_id: number;
+  grade_name: string;
+  subject_name: string;
+  title: string;
+  is_active: boolean;
+  started_at: string | null;
+  created_at: string | null;
+  file_count: number;
+}
+
 export default function AdminHome() {
   const navigate = useNavigate();
   const [selectedGrade, setSelectedGrade] = useState('');
@@ -32,20 +44,27 @@ export default function AdminHome() {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [starting, setStarting] = useState(false);
+  const [sessionCount, setSessionCount] = useState(0);
+  const [fileCount, setFileCount] = useState(0);
   const { error } = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [gradesData, subjectsData] = await Promise.all([
+        const [gradesData, subjectsData, sessionsData] = await Promise.all([
           apiFetch<Grade[]>('/grades'),
           apiFetch<Subject[]>('/subjects'),
+          apiFetch<SessionInfo[]>('/sessions'),
         ]);
         setGrades(gradesData);
         setSubjects(subjectsData);
+        setSessionCount(sessionsData.length);
+        setFileCount(sessionsData.reduce((sum, s) => sum + s.file_count, 0));
       } catch {
         setGrades([]);
         setSubjects([]);
+        setSessionCount(0);
+        setFileCount(0);
       }
     };
     fetchData();
@@ -191,7 +210,7 @@ export default function AdminHome() {
           <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center mb-2">
             <span className="material-symbols-outlined text-white">folder</span>
           </div>
-          <h4 className="text-3xl font-extrabold text-white">0</h4>
+          <h4 className="text-3xl font-extrabold text-white">{fileCount}</h4>
           <p className="text-xs text-white font-medium mt-1">Archivos Guardados</p>
         </div>
 
@@ -202,7 +221,7 @@ export default function AdminHome() {
           <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center mb-2">
             <span className="material-symbols-outlined text-white">check_circle</span>
           </div>
-          <h4 className="text-3xl font-extrabold text-white">0</h4>
+          <h4 className="text-3xl font-extrabold text-white">{sessionCount}</h4>
           <p className="text-xs text-white font-medium mt-1">Sesiones Realizadas</p>
         </div>
       </div>
