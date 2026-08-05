@@ -107,7 +107,7 @@ export default function AdminSession() {
 
     const formData = new FormData();
     formData.append('grade_id', String(gradeId));
-    formData.append('session_id', String(sessionId));
+    if (sessionId) formData.append('session_id', String(sessionId));
     formData.append('file', file);
 
     const token = localStorage.getItem('inejoma_auth_token');
