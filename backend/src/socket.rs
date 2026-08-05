@@ -28,6 +28,19 @@ pub fn configure(io: &socketioxide::SocketIo, counter: RoomCounter) {
             let c = c1.clone();
             async move {
                 let room = data.pin.clone();
+
+                // Decrement counters for rooms the socket is leaving
+                {
+                    let mut guard = c.lock().unwrap();
+                    for old_room in socket.rooms() {
+                        if old_room != socket.id.to_string() {
+                            if let Some(entry) = guard.get_mut(old_room.as_ref()) {
+                                *entry = entry.saturating_sub(1);
+                            }
+                        }
+                    }
+                }
+
                 let _ = socket.leave_all();
                 let _ = socket.join(room.clone());
 

@@ -76,6 +76,16 @@ pub async fn end_session(
     State(state): State<AppState>,
     Path(session_id): Path<i32>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    let session: Option<Session> = sqlx::query_as("SELECT * FROM sessions WHERE id = $1")
+        .bind(session_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if let Some(ref s) = session {
+        state.room_counter.lock().unwrap().remove(&s.pin);
+    }
+
     sqlx::query("UPDATE sessions SET is_active = FALSE, updated_at = NOW() WHERE id = $1")
         .bind(session_id)
         .execute(&state.pool)
