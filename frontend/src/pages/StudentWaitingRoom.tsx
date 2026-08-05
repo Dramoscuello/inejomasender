@@ -17,7 +17,7 @@ export default function StudentWaitingRoom() {
   const [files, setFiles] = useState<SharedFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionEnded, setSessionEnded] = useState(false);
-  const [countdown, setCountdown] = useState(5);
+  const [verifyFailed, setVerifyFailed] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
   const fetchFiles = async () => {
@@ -32,40 +32,53 @@ export default function StudentWaitingRoom() {
   };
 
   useEffect(() => {
-    fetchFiles();
-    const interval = setInterval(fetchFiles, 5000);
-
-    if (pin) {
-      const socket = io('/', { transports: ['websocket', 'polling'] });
-      socketRef.current = socket;
-
-      socket.on('connect', () => {
-        socket.emit('join-session', { pin });
-      });
-
-      socket.on('session-ended', () => {
-        socket.disconnect();
-        setSessionEnded(true);
-      });
-
-      return () => {
-        clearInterval(interval);
-        socket.disconnect();
-      };
-    }
-
-    return () => clearInterval(interval);
+    const verifyPin = async () => {
+      if (!pin) return;
+      try {
+        await apiFetch(`/sessions/verify/${pin}`);
+      } catch {
+        setVerifyFailed(true);
+        setTimeout(() => navigate('/'), 3000);
+      }
+    };
+    verifyPin();
   }, [pin, navigate]);
 
   useEffect(() => {
-    if (!sessionEnded) return;
-    if (countdown <= 0) {
-      navigate('/');
-      return;
+    if (verifyFailed) return;
+    fetchFiles();
+
+    const fileInterval = setInterval(fetchFiles, 5000);
+    const checkActive = async () => {
+      try {
+        await apiFetch(`/sessions/verify/${pin}`);
+      } catch {
+        setSessionEnded(true);
+      }
+    };
+    const statusInterval = setInterval(checkActive, 5000);
+
+    let socket: ReturnType<typeof io> | null = null;
+    if (pin) {
+      socket = io('/', { transports: ['websocket', 'polling'] });
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        socket?.emit('join-session', { pin });
+      });
+
+      socket.on('session-ended', () => {
+        socket?.disconnect();
+        setSessionEnded(true);
+      });
     }
-    const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [sessionEnded, countdown, navigate]);
+
+    return () => {
+      clearInterval(fileInterval);
+      clearInterval(statusInterval);
+      socket?.disconnect();
+    };
+  }, [pin, navigate, verifyFailed]);
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -81,6 +94,27 @@ export default function StudentWaitingRoom() {
     window.open(`/api/files/download-zip/${pin}`, '_blank');
   };
 
+  if (verifyFailed) {
+    return (
+      <div className="bg-[#f8f9fe] min-h-screen flex items-center justify-center font-sans">
+        <div className="bg-white rounded-3xl p-8 shadow-2xl border border-gray-100 text-center max-w-sm w-full mx-4">
+          <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center mx-auto mb-4">
+            <span className="material-symbols-outlined text-3xl">error</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">PIN inválido</h2>
+          <p className="text-sm text-gray-500 mb-6">Esta sesión no está activa o el PIN es incorrecto. Serás redirigido.</p>
+          <button
+            onClick={() => navigate('/')}
+            style={{ backgroundColor: '#7b68ee', color: '#ffffff' }}
+            className="bg-[#7b68ee] text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-indigo-600 transition-colors"
+          >
+            Volver ahora
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (sessionEnded) {
     return (
       <div className="bg-[#f8f9fe] min-h-screen flex items-center justify-center font-sans">
@@ -89,14 +123,13 @@ export default function StudentWaitingRoom() {
             <span className="material-symbols-outlined text-3xl">stop_circle</span>
           </div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Sesión finalizada</h2>
-          <p className="text-sm text-gray-500 mb-6">El profesor ha cerrado la sesión. Serás redirigido en unos segundos.</p>
-          <div className="text-4xl font-extrabold text-brand-purple mb-4">{countdown}</div>
+          <p className="text-sm text-gray-500 mb-6">El profesor ha cerrado la sesión. Serás redirigido a la pantalla de inicio.</p>
           <button
             onClick={() => navigate('/')}
             style={{ backgroundColor: '#7b68ee', color: '#ffffff' }}
             className="bg-[#7b68ee] text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-indigo-600 transition-colors"
           >
-            Volver ahora
+            Volver al inicio
           </button>
         </div>
       </div>
