@@ -3,16 +3,14 @@ services:
     image: postgres:15-alpine
     container_name: inejomasender_db
     environment:
-      POSTGRES_USER: ${DB_USER:-user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password_seguro}
-      POSTGRES_DB: ${DB_NAME:-inejomasender}
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: inejoma_user
+      POSTGRES_PASSWORD: inejoma_db_pass
+      POSTGRES_DB: inejomasender
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user} -d ${DB_NAME:-inejomasender}"]
+      test: ["CMD-SHELL", "pg_isready -U inejoma_user -d inejomasender"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -26,7 +24,7 @@ services:
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     environment:
-      - DATABASE_URL=postgres://${DB_USER:-user}:${DB_PASSWORD:-password_seguro}@postgres:5432/${DB_NAME:-inejomasender}
+      - DATABASE_URL=postgres://inejoma_user:inejoma_db_pass@postgres:5432/inejomasender
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-password_seguro}
       - JWT_SECRET=${JWT_SECRET:-change_me_in_production}
